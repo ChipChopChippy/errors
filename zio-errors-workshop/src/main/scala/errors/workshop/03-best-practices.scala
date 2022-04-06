@@ -2,7 +2,7 @@ package errors.workshop
 
 import zio._
 import java.sql.ResultSet
-import java.net.http
+
 import java.io.IOException
 import java.io.FileInputStream
 

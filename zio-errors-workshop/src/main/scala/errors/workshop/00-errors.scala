@@ -1,6 +1,9 @@
 package errors.workshop
 
+import errors.workshop.EarlyReturn.EarlyReturn.earlyReturn
 import zio._
+
+import scala.concurrent.Future
 
 /**
  * In functional programming, an error type is one that models the effect of
@@ -16,22 +19,27 @@ object EarlyReturn extends ZIOAppDefault {
    * Discuss how this data type differs from other error types you are familiar
    * with.
    */
-  sealed trait EarlyReturn[+E, +A] {
-    def map[E1 >: E, B](f: A => B): EarlyReturn[E1, B] = TODO
+  sealed trait EarlyReturn[+E, +A] { self =>
+    def map[E1 >: E, B](f: A => B): EarlyReturn[E1, B] = EarlyReturn.fromEither(self.run.map(f))
 
-    def flatMap[E1 >: E, B](f: A => EarlyReturn[E1, B]): EarlyReturn[E1, B] = TODO
+    def flatMap[E1 >: E, B](f: A => EarlyReturn[E1, B]): EarlyReturn[E1, B] =  EarlyReturn.fromEither(self.run.flatMap(f(_).run))
 
-    def run: Either[E, A] = TODO
+    def run: Either[E, A]
   }
+
   object EarlyReturn {
-    def apply[A](a: A): EarlyReturn[Nothing, A]       = TODO
-    def earlyReturn[A](a: A): EarlyReturn[A, Nothing] = TODO
+    def fromEither[E, A](either: Either[E, A]): EarlyReturn[E, A] =
+      new EarlyReturn[E, A] {
+        lazy val run = either
+      }
+    def apply[A](a: A): EarlyReturn[Nothing, A]       = fromEither(Right(a))
+    def earlyReturn[A](a: A): EarlyReturn[A, Nothing] = fromEither(Left(a))
   }
 
   def program(number: Int) =
     for {
       v1 <- EarlyReturn(number)
-      v2 <- if (v1 % 2 == 0) EarlyReturn.earlyReturn("Returned eariest!") else EarlyReturn(number * 41)
+      v2 <- if (v1 % 2 == 0) EarlyReturn.earlyReturn("Returned earliest!") else EarlyReturn(number * 41)
       v3 <- if (v2 % 2 == 0) EarlyReturn.earlyReturn("Returned earlier!") else EarlyReturn(())
     } yield "Did not return early!"
 
@@ -51,18 +59,18 @@ object StandardErrorTypes extends ZIOAppDefault {
    *
    * Find the pure error types in Scala.
    */
-  type PureErrorType1[+A] = TODO
+  type PureErrorType1[+A] = Try[A]
 
-  type PureErrorType2[+A] = TODO
+  type PureErrorType2[+A] = Option[A]
 
-  type PureErrorType3[+E, +A] = TODO
+  type PureErrorType3[+E, +A] = Either[E, A]
 
   /*
    * EXERCISE
    *
    * Find an async error type built into Scala.
    */
-  type AsyncErrorType[+A] = TODO
+  type AsyncErrorType[+A] = Future[A]
 
   /*
    * EXERCISE
@@ -70,12 +78,12 @@ object StandardErrorTypes extends ZIOAppDefault {
    * Find a non-obvious fallible type that can be used to solve problems
    * involving non-determinism.
    */
-  type NonDetErrorType[+A] = TODO
+  type NonDetErrorType[+A] = List[A]
 
   /*
    * EXERCISE
    *
-   * Prove the `NonDetErrorType` is a fallible type by demonstrating short-circuiting behavior.
+   * Prove the `NonDetErrorType` is a fallible type by demonstrating short-circuiting behaviour.
    */
   def run = Console.printLine("StandardErrorTypes")
 }
@@ -92,7 +100,7 @@ object ErrorSizes extends ZIOAppDefault {
    *
    * Identify the smallest error type (A + 1).
    */
-  type SmallestErrorType[+A] = TODO
+  type SmallestErrorType[+A] = Option[A]
 
   sealed trait EmailValidationError
   object EmailValidationError {
@@ -107,7 +115,7 @@ object ErrorSizes extends ZIOAppDefault {
    *
    * Identify a small error type that has size (A + 4).
    */
-  type Validated[+A] = TODO
+  type Validated[+A] = Either[EmailValidationError, A]
 
   /*
    * EXERCISE
@@ -124,8 +132,8 @@ object ErrorSizes extends ZIOAppDefault {
   type Type1[+A]     = Try[A]
   type Type2[+E, +A] = Either[E, A]
 
-  def type1ToType2[A](type1: Type1[A]): Type2[Any, A] = TODO // These types are incorrect
-  def type2ToType1[A](type2: Type2[Any, A]): Type1[A] = TODO // These types are incorrect
+  def type1ToType2[A](type1: Type1[A]): Type2[Throwable, A] = type1.toEither
+  def type2ToType1[A](type2: Type2[Throwable, A]): Type1[A] = type2.toTry
 
   def run = {
     val try1 = Try(32)

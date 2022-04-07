@@ -159,8 +159,8 @@ object EquivalentErrorTypes extends ZIOAppDefault {
   type T1 = Either[String, Int]
   type T2 = Either[Int, String]
 
-  def t1ToT2(t1: T1): T2 = TODO
-  def t2ToT1(t2: T2): T1 = TODO
+  def t1ToT2(t1: T1): T2 = t1.swap
+  def t2ToT1(t2: T2): T1 = t2.swap
 
   /*
    * EXERCISE
@@ -171,8 +171,20 @@ object EquivalentErrorTypes extends ZIOAppDefault {
   type T3 = Either[String, Option[Int]]
   type T4 = Either[Option[String], Int]
 
-  def t3ToT4(t3: T3): T4 = TODO
-  def t4ToT3(t4: T4): T3 = TODO
+  def t3ToT4(t3: T3): T4 = t3 match {
+    case Left(s)  => Left(Some(s))
+    case Right(o) => o match {
+      case Some(i) => Right(i)
+      case None    => Left(None)
+    }
+  }
+  def t4ToT3(t4: T4): T3 = t4 match {
+    case Left(o)  => o match {
+      case Some(s) => Left(s)
+      case None    => Right(None)
+    }
+    case Right(i) => Right(Some(i))
+  }
 
   def run =
     Console.printLine(t3ToT4(Right(Some(42))) == Right(42))
@@ -192,7 +204,14 @@ object TheoreticallyBestErrorType extends ZIOAppDefault {
    *
    * Discuss advantages and disadvantages of your chosen type.
    */
-  def getEnvAsInt(name: String): ZIO[System, TODO, Int] = TODO
+  def getEnvAsInt(name: String): ZIO[System, Option[SecurityException], Int] =
+    for {
+      optionString <- System.env(name).mapError(Some(_))
+      int          <- optionString match {
+                        case Some(s) => s.toIntOption.fold[IO[Option[Nothing], Int]](ZIO.fail(None))(ZIO.succeed(_))
+                        case None    => ZIO.fail(None)
+                      }
+    } yield int
 
   def run =
     for {

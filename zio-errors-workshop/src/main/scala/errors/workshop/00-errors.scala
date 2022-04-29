@@ -204,14 +204,17 @@ object TheoreticallyBestErrorType extends ZIOAppDefault {
    *
    * Discuss advantages and disadvantages of your chosen type.
    */
-  def getEnvAsInt(name: String): ZIO[System, Option[SecurityException], Int] =
-    for {
-      optionString <- System.env(name).mapError(Some(_))
-      int          <- optionString match {
-                        case Some(s) => s.toIntOption.fold[IO[Option[Nothing], Int]](ZIO.fail(None))(ZIO.succeed(_))
-                        case None    => ZIO.fail(None)
-                      }
-    } yield int
+  def getEnvAsInt(name: String): ZIO[System, Option[Nothing], Int] =
+    System.env(name).orDie.some.flatMap(s => ZIO.succeed(s.toIntOption).some)
+
+//  def getEnvAsInt(name: String): ZIO[System, Option[SecurityException], Int] =
+//    for {
+//      optionString <- System.env(name).mapError(Some(_))
+//      int          <- optionString match {
+//                        case Some(s) => s.toIntOption.fold[IO[Option[Nothing], Int]](ZIO.fail(None))(ZIO.succeed(_))
+//                        case None    => ZIO.fail(None)
+//                      }
+//    } yield int
 
   def run =
     for {

@@ -1,5 +1,9 @@
 package errors.workshop
 
+import zio.{IO, Scope, ZIO}
+
+import java.io.FileNotFoundException
+
 object file_system {
   trait FileSystem {
     import java.io.FileInputStream
@@ -11,7 +15,8 @@ object file_system {
      * type of the error should be. You are welcome to create your own error
      * type if you think this is the best solution for the problem.
      */
-    def open(path: String): TODO1[FileInputStream]
+    def open(path: String) =
+      ZIO.acquireRelease(ZIO.attemptBlocking(new FileInputStream(path)).refineToOrDie[FileNotFoundException])(fis => ZIO.succeed(fis.close()))
   }
 }
 

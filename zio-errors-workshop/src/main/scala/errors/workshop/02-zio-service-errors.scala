@@ -1,8 +1,9 @@
 package errors.workshop
 
-import zio.{IO, Scope, ZIO}
+import zio.{IO, Scope, UIO, ZIO}
 
 import java.io.FileNotFoundException
+import java.sql.SQLTransientException
 
 object file_system {
   trait FileSystem {
@@ -21,6 +22,13 @@ object file_system {
 }
 
 object database {
+
+  sealed trait DatabaseConnectionFailure extends Exception
+  object DatabaseConnectionFailure {
+    final case class MaxConnectionsExceeded(max: Int) extends DatabaseConnectionFailure
+    final case class ConnectionTimeout(timeout: Int) extends DatabaseConnectionFailure
+    final case class TransientSQL(cause: SQLTransientException) extends DatabaseConnectionFailure
+  }
   /*
    * EXERCISE
    *
@@ -28,7 +36,7 @@ object database {
    * type of the error should be. You are welcome to create your own error
    * type if you think this is the best solution for the problem.
    */
-  def connectToDatabase(url: String): TODO1[QueryExecutor] = TODO
+  def connectToDatabase(url: String): ZIO[Any, DatabaseConnectionFailure, QueryExecutor] = TODO
 
   trait QueryExecutor {
     import java.sql._
@@ -40,7 +48,7 @@ object database {
      * type of the error should be. You are welcome to create your own error
      * type if you think this is the best solution for the problem.
      */
-    def executeQuery(query: String): TODO1[ResultSet]
+    def executeQuery(query: String): IO[SQLException, ResultSet]
   }
 }
 
@@ -51,6 +59,9 @@ object repo {
   final case class User(name: String, id: UserId, email: String)
 
   trait UserRepo {
+
+    sealed trait UserRepoError
+    final case class UserNotFound(id: UserId) extends UserRepoError
     /*
      * EXERCISE
      *
@@ -58,7 +69,7 @@ object repo {
      * type of the error should be. You are welcome to create your own error
      * type if you think this is the best solution for the problem.
      */
-    def findUserByEmail(email: String): TODO1[User]
+    def findUserByEmail(email: String): UIO[Option[User]]
 
     /*
      * EXERCISE
@@ -67,7 +78,7 @@ object repo {
      * type of the error should be. You are welcome to create your own error
      * type if you think this is the best solution for the problem.
      */
-    def deleteUser(user: User): TODO1[Unit]
+    def deleteUser(user: User): IO[UserNotFound, Unit]
 
     /*
      * EXERCISE
@@ -86,7 +97,15 @@ object repo {
      * Using pseudo-SQL and ignoring SQL injection, implement this function,
      * taking care to handle errors appropriately.
      */
-    def findUserByEmail(email: String): TODO1[User] = TODO
+    def findUserByEmail(email: String): IO[Nothing, Option[User]] =
+      queryExecutor.executeQuery("SELECT * FROM users WHERE email = '" + email + "'").orDie.map { rs =>
+        if (rs.next()) {
+          Some(User(rs.getString("name"), UserId(rs.getLong("id")), rs.getString("email")))
+        } else {
+          None
+        }
+      }
+
 
     /*
      * EXERCISE

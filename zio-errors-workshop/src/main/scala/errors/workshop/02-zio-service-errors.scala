@@ -78,7 +78,7 @@ object repo {
      * type of the error should be. You are welcome to create your own error
      * type if you think this is the best solution for the problem.
      */
-    def deleteUser(user: User): IO[UserNotFound, Unit]
+    def deleteUser(user: User): IO[UserNotFound, Unit] //IO[Option[Nothing], Unit]
 
     /*
      * EXERCISE
@@ -87,7 +87,7 @@ object repo {
      * type of the error should be. You are welcome to create your own error
      * type if you think this is the best solution for the problem.
      */
-    def updateExistingUser(user: User): TODO1[Unit]
+    def updateExistingUser(user: User): IO[UserNotFound, Unit]
   }
 
   final case class UserRepoLive(queryExecutor: QueryExecutor) extends UserRepo {
@@ -137,7 +137,7 @@ object route {
    * type of the error should be. You are welcome to create your own error
    * type if you think this is the best solution for the problem.
    */
-  type HttpRouteHandler = PartialFunction[HttpRequest, TODO1[HttpResponse]]
+  type HttpRouteHandler = PartialFunction[HttpRequest, ZIO[Any, HttpErrorCode, HttpResponse]]
 
   /*
    * EXERCISE
@@ -146,7 +146,7 @@ object route {
    * to embed it into `ZIO` in such a way that whether or not a route is
    * handled can be decided effectfully.
    */
-  type HttpRouteHandler2 = TODO
+  type HttpRouteHandler2 = HttpRequest => ZIO[Any, Option[HttpErrorCode], HttpResponse]
 }
 
 object payment_processor {

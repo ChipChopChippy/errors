@@ -1,10 +1,9 @@
 package errors.workshop
 
 import zio._
-import java.sql.ResultSet
 
-import java.io.IOException
-import java.io.FileInputStream
+import java.sql.ResultSet
+import java.io.{FileInputStream, FileNotFoundException, IOException}
 
 /*
  * BEST PRACTICE #1
@@ -20,7 +19,7 @@ object ExposeAll extends ZIOAppDefault {
    * Fix what's wrong with the following function's type signature, and update
    * its implementation to match.
    */
-  def readFile1(path: String): UIO[String] = ZIO.blocking {
+  def readFile1(path: String): IO[IOException, String] = ZIO.blocking {
     ZIO.succeed {
       val source = scala.io.Source.fromFile(path)
 
@@ -35,13 +34,13 @@ object ExposeAll extends ZIOAppDefault {
    * Fix what's wrong with the following function's type signature, and update
    * its implementation to match.
    */
-  def readFile2(path: String): IO[Throwable, String] = ZIO.blocking {
+  def readFile2(path: String): IO[IOException, String] = ZIO.blocking {
     ZIO.attempt {
       val source = scala.io.Source.fromFile(path)
 
       try source.getLines().mkString("\n")
       finally source.close()
-    }
+    }.refineToOrDie[IOException]
   }
 
   def run =
@@ -70,7 +69,7 @@ object InnerRefinement {
      *
      * Fix this error type.
      */
-    def getUserById(id: Int): IO[Throwable, User] = ???
+    def getUserById(id: Int): UIO[Option[User]] = ???
   }
 
   final case class UserSession(repo: UserRepo) {
@@ -112,7 +111,8 @@ object Sandboxing {
    * Fix the lack of sandboxing in the following wireup function.
    */
   def run =
-    internalLaunchServer(myRouteHandler(_))
+    internalLaunchServer(myRouteHandler(_)).catchAllCause(cause =>
+      Console.printLine(s"Server crashed: $cause"))
 }
 
 /*
